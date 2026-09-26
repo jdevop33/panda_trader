@@ -1,0 +1,10 @@
+# Runtime Python dependencies for the services the Node server actually spawns:
+#   - server/python_service.py          (spawned by server/routes.ts) -> redis.asyncio
+#   - the inline data provider block     (spawned by server/data_service.ts) -> requests
+#
+# The standalone research/backtesting scripts (trading_engine.py -> nautilus-trader,
+# social_monitor.py -> tweepy/textblob, websocket_server.py -> websockets) are NOT
+# spawned by the Node runtime, so their heavy deps are intentionally left out to keep
+# the image slim. Add them here if those scripts are ever wired into the server.
+redis>=5.0.0
+requests>=2.32.0
