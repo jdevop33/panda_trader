@@ -1,0 +1,44 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies & build output (rebuilt inside the image)
+node_modules
+dist
+build
+.cache
+*.tsbuildinfo
+
+# Secrets / local env — never bake into an image layer
+.env
+.env.*
+production.env.template
+*.pem
+*.key
+
+# Python / uv local state
+uv.lock
+.venv
+__pycache__
+*.pyc
+
+# Runtime state that must not ship in the image
+data
+backups
+logs
+*.log
+
+# Docs, deploy scripts and editor cruft (not needed for the build)
+*.md
+deploy.sh
+deploy_real_infrastructure.sh
+server_install.sh
+attached_assets
+.replit
+.DS_Store
+*.tar.gz
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose*.yml

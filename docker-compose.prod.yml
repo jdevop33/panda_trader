@@ -1,0 +1,81 @@
+# Production compose for a single shared Docker host behind a Caddy reverse proxy.
+#
+# The dashboard is self-contained: storage is in-memory (server/storage.ts -> MemStorage),
+# and the Node runtime needs no database. It always listens on port 5000.
+#
+# SECURITY — the reverse proxy is the ONLY entry point. The published port is bound to
+# loopback (127.0.0.1) on purpose: the container must NOT be directly reachable from the
+# internet. The dashboard has no application-level auth yet, and it exposes state-changing,
+# money-moving endpoints (POST /api/dex/execute-trade, /api/live-trading/start,
+# /api/trading/emergency-stop/:userId, /api/deploy/infrastructure). Caddy terminates TLS
+# and is where auth belongs; do NOT change the mapping to a public interface until those
+# routes carry their own authentication.
+#
+# Secrets are RUNTIME env only. Put them in a local .env next to this file (never commit
+# it — .env / .env.* are git-ignored) — every key below is optional and the app degrades
+# gracefully when one is absent (see the /api/system/health flags).
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   # optional Redis sidecar for the bundled Python trading service:
+#   docker compose -f docker-compose.prod.yml --profile redis up -d --build
+#
+# Caddyfile on the host (proxies to the loopback-published port):
+#   trader.example.com {
+#       reverse_proxy 127.0.0.1:8080
+#   }
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: panda-trader:latest
+    restart: unless-stopped
+    # Loopback-only publish: Caddy on the host reaches 127.0.0.1:${APP_PORT:-8080},
+    # nothing off-box can. Set APP_PORT to just a port (e.g. 8090) to move it; the
+    # 127.0.0.1 prefix keeps it private regardless.
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:5000"
+    environment:
+      NODE_ENV: production
+      # All optional — supplied from .env, empty by default so the image needs no secrets.
+      TWITTER_BEARER_TOKEN: ${TWITTER_BEARER_TOKEN:-}
+      TWITTER_CLIENT_ID: ${TWITTER_CLIENT_ID:-}
+      TWITTER_CLIENT_SECRET: ${TWITTER_CLIENT_SECRET:-}
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+      ETHEREUM_RPC_URL: ${ETHEREUM_RPC_URL:-}
+      INFURA_PROJECT_ID: ${INFURA_PROJECT_ID:-}
+      WALLET_PRIVATE_KEY: ${WALLET_PRIVATE_KEY:-}
+      ALIBABA_CLOUD_API_KEY: ${ALIBABA_CLOUD_API_KEY:-}
+      ALIBABA_ACCESS_KEY_ID: ${ALIBABA_ACCESS_KEY_ID:-}
+      ALIBABA_ACCESS_KEY_SECRET: ${ALIBABA_ACCESS_KEY_SECRET:-}
+    # env_file is honored automatically if a .env file is present.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:5000/api/system/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Opt-in Redis for the bundled Python service (server/python_service.py), which
+  # connects to a hardcoded 127.0.0.1:6379. It joins the app's network namespace so
+  # that "localhost" resolves to this Redis. Enable with `--profile redis`.
+  # The Node dashboard itself does not read Redis, so this is purely for the Python side.
+  # Pinned by digest for reproducible, supply-chain-safe pulls (see Dockerfile note).
+  redis:
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    restart: unless-stopped
+    profiles: ["redis"]
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    network_mode: "service:app"
+    depends_on:
+      - app

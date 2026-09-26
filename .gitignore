@@ -4,3 +4,11 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Secrets — never commit. The production .env next to docker-compose.prod.yml holds
+# WALLET_PRIVATE_KEY, TWITTER_CLIENT_SECRET, ALIBABA_ACCESS_KEY_SECRET, RPC URLs, etc.
+# production.env.template stays tracked (placeholders only, no real values).
+.env
+.env.*
+*.pem
+*.key
