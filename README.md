@@ -1,4 +1,10 @@
-# 8Trader8Panda - AI-Powered Meme Coin Trading System
+# LEGACY: 8Trader8Panda - AI-Powered Meme Coin Trading System
+
+> **LEGACY REPOSITORY. Not under active development.**
+> The only active repo is **[cherishwins/x402-facilitator](https://github.com/cherishwins/x402-facilitator)**. Work there.
+> A subset of CryptoSurferTrader. Not being worked on.
+> Marked legacy 13 October 2026 so this repo stops being opened by mistake. Archive it in Settings when convenient.
+
 
 > **🚀 Production-Ready Automated Cryptocurrency Trading Platform**
 > 
